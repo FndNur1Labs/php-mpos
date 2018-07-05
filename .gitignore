@@ -38,3 +38,9 @@
 /vendor/
 
 tests/_output/*
+
+# NetBeans Project Directory
+/nbproject/*
+
+# No need for composer.lock
+/composer.lock

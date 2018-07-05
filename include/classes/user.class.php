@@ -244,7 +244,7 @@ class User extends Base {
         $notifs->setSetting($this->setting);
         $notifs->setErrorCodes($this->aErrorCodes);
         $ndata = $notifs->getNotificationSettings($uid);
-        if (@$ndata['success_login'] == 1) {
+        if ((array_key_exists('push_success_lo', $ndata) && $ndata['push_success_lo']) || (array_key_exists('success_login', $ndata) && $ndata['success_login'])){
           // seems to be active, let's send it
           $aDataN['username'] = $username;
           $aDataN['email'] = $this->getUserEmail($username);
@@ -292,6 +292,7 @@ class User extends Base {
     count($aPin) == 1 ? $pin_hash = $this->getHash($pin, 0) : $pin_hash = $this->getHash($pin, $aPin[1], $aPin[2]);
     $stmt = $this->mysqli->prepare("SELECT pin FROM $this->table WHERE id = ? AND pin = ? LIMIT 1");
     if ($stmt->bind_param('is', $userId, $pin_hash) && $stmt->execute() && $stmt->bind_result($row_pin) && $stmt->fetch()) {
+      $stmt->close();
       $this->setUserPinFailed($userId, 0);
       return ($pin_hash === $row_pin);
     }
@@ -574,7 +575,7 @@ class User extends Base {
     }
     // Catchall
     $this->setErrorMessage('Failed to update your account');
-    $this->debug->append('Account update failed: ' . $this->mysqli->error);
+    $this->debug->append('Account update failed: ' . $this->mysqli->lastused->error);
     return false;
   }
 
@@ -666,7 +667,7 @@ class User extends Base {
     // Enforce a page reload and point towards login with referrer included, if supplied
     $port = ($_SERVER["SERVER_PORT"] == "80" || $_SERVER["SERVER_PORT"] == "443") ? "" : (":".$_SERVER["SERVER_PORT"]);
     $pushto = $_SERVER['SCRIPT_NAME'].'?page=login';
-    $location = (@$_SERVER['HTTPS'] == 'on') ? 'https://' . $_SERVER['SERVER_NAME'] . $port . $pushto : 'http://' . $_SERVER['SERVER_NAME'] . $port . $pushto;
+    $location = (@$_SERVER['HTTPS'] == 'on') ? 'https://' . $_SERVER['HTTP_HOST'] . $port . $pushto : 'http://' . $_SERVER['HTTP_HOST'] . $port . $pushto;
     if (!headers_sent()) header('Location: ' . $location);
     exit('<meta http-equiv="refresh" content="0; url=' . $location . '"/>');
   }
@@ -831,7 +832,7 @@ class User extends Base {
     $signup_time = time();
 
     if ($this->checkStmt($stmt) && $stmt->bind_param('sssissi', $username_clean, $password_hash, $email1, $signup_time, $pin_hash, $apikey_hash, $is_locked) && $stmt->execute()) {
-      $new_account_id = $this->mysqli->insert_id;
+      $new_account_id = $this->mysqli->lastused->insert_id;
       if (!is_null($coinaddress)) $this->coin_address->add($new_account_id, $coinaddress);
       if (! $this->setting->getValue('accounts_confirm_email_disabled') && $is_admin != 1) {
         if ($token = $this->token->createToken('confirm_email', $stmt->insert_id)) {
@@ -854,8 +855,8 @@ class User extends Base {
       }
     } else {
       $this->setErrorMessage( 'Unable to register' );
-      $this->debug->append('Failed to insert user into DB: ' . $this->mysqli->error);
-      echo $this->mysqli->error;
+      $this->debug->append('Failed to insert user into DB: ' . $this->mysqli->lastused->error);
+      echo $this->mysqli->lastused->error;
       if ($stmt->sqlstate == '23000') $this->setErrorMessage( 'Username or email already registered' );
       return false;
     }
@@ -894,7 +895,7 @@ class User extends Base {
     } else {
       $this->setErrorMessage('Invalid token: ' . $this->token->getError());
     }
-    $this->debug->append('Failed to update password:' . $this->mysqli->error);
+    $this->debug->append('Failed to update password:' . $this->mysqli->lastused->error);
     return false;
   }
 

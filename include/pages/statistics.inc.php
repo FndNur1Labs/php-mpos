@@ -9,7 +9,7 @@ if (!$smarty->isCached('master.tpl', $smarty_cache_key)) {
   } else {
     $dDifficulty = 1;
     $iBlock = 0;
-    $_SESSION['POPUP'][] = array('CONTENT' => 'Unable to connect to litecoind RPC service: ' . $bitcoin->can_connect(), 'TYPE' => 'alert alert-danger');
+    $_SESSION['POPUP'][] = array('CONTENT' => 'Unable to connect to RPC service: ' . $bitcoin->can_connect(), 'TYPE' => 'alert alert-danger');
   }
   $smarty->assign("CURRENTBLOCK", $iBlock);
   $smarty->assign("DIFFICULTY", $dDifficulty);
@@ -17,4 +17,14 @@ if (!$smarty->isCached('master.tpl', $smarty_cache_key)) {
   $debug->append('Using cached page', 3);
 }
 
-$smarty->assign("CONTENT", "default.tpl");
+switch($setting->getValue('acl_show_stats_loggedin', 1)) {
+case '0':
+  $smarty->assign("CONTENT", "default.tpl");
+  break;
+case '1':
+  if ($user->isAuthenticated()) {
+    $smarty->assign("CONTENT", "default.tpl");
+  }
+  break;
+}
+
